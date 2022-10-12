@@ -22,6 +22,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance,
 //#pragma comment(lib, "Ws2_32.lib")
 
 #include "framework.h"
+#include <time.h>
+#include <winuser.h>
 #include "WindowsAPI_studing_project.h"
 
 #define MAX_LOADSTRING 100
@@ -33,12 +35,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prev_instance,
 
 HWND hwndSta1;
 HWND hwndSta2;
+HWND MsgeAll;
 
+RECT        rectMove = {0};
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING] = L"MyWindowTitle";                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING] = L"MyWindow";            // the main window class name
+
 
 
 // Forward declarations of functions included in this code module:
@@ -52,8 +57,12 @@ void                RegisterRedPanelClass(void);
 void                RegisterBluePanelClass(void);
 void                CreateLabels(HWND);
 void                FlashWindowLocalFunc(HWND);
-
 void                AddMenus(HWND); //----Menu---
+void                MoveRect(RECT* rect); 
+
+void DrawPixels(HWND hWnd);
+void DrawLinesLocal(HWND hWnd);
+void DoDrawing(HWND hwnd);
 
 int APIENTRY WinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -64,7 +73,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);      // ???
 
     // TODO: Place code here.
-    
+    rectMove.left = 100;
+    rectMove.top = 300;
     // Initialize global strings
     //LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING); // Я закомментил, лучше разкоментить
     //LoadStringW(hInstance, IDC_WINDOWSAPISTUDINGPROJECT, szWindowClass, MAX_LOADSTRING);
@@ -90,6 +100,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
         }
     }
 
+    srand(time(NULL));
     return (int) msg.wParam;
 }
 
@@ -106,14 +117,14 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
+    wcex.style          = CS_HREDRAW | CS_VREDRAW ;
     wcex.lpfnWndProc    = WndProc;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINDOWSAPISTUDINGPROJECT));
     wcex.hCursor        = LoadCursor(NULL, IDC_CROSS);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.hbrBackground  = (HBRUSH)(COLOR_GRAYTEXT +1);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_WINDOWSAPISTUDINGPROJECT);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -164,9 +175,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     wchar_t     buf[10];
     size_t      BUF_LEN = sizeof(buf);
     RECT        rect;
+    LPPOINT     pPnt;
+    pPnt = malloc(sizeof(*pPnt));
 
     HMENU       hMenu;  //A popup menu 
     POINT       point;
+
+    //SetWindowTextW(MsgeAll, message);
+    
 
     switch (message)
     {
@@ -194,10 +210,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_PAINT:
         {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
+            //PAINTSTRUCT ps;
+            //HDC hdc = BeginPaint(hWnd, &ps);
+            //// TODO: Add any drawing code that uses hdc here...
+            //EndPaint(hWnd, &ps);
+
+            //DrawPixels(hWnd);
+
+
+            DrawLinesLocal(hWnd, &rectMove);
+            InvalidateRect(hWnd, NULL, FALSE);
+            //DoDrawing(hWnd);
+            
+            
         }
         break;
 
@@ -232,7 +257,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_KEYDOWN:
-
         if (wParam == VK_ESCAPE) {
 
             int ret = MessageBoxW(hWnd, L"Are you sure to quit?",
@@ -249,13 +273,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_MOVE:
     
         GetWindowRect(hWnd, &rect);
+        GetCursorPos(pPnt);
 
-        StringCbPrintfW(buf, BUF_LEN, L"%ld", rect.left);
+        //StringCbPrintfW(buf, BUF_LEN, L"%ld", rect.left);
+        //SetWindowTextW(hwndSta1, buf);
+
+        //StringCbPrintfW(buf, BUF_LEN, L"%ld", rect.top);
+        //SetWindowTextW(hwndSta2, buf);
+    
+        break;
+    
+    case WM_LBUTTONDOWN:
+
+        GetCursorPos(pPnt);
+        ScreenToClient(hWnd, pPnt);
+
+        StringCbPrintfW(buf, BUF_LEN, L"%ld", pPnt->x);
         SetWindowTextW(hwndSta1, buf);
 
-        StringCbPrintfW(buf, BUF_LEN, L"%ld", rect.top);
+        StringCbPrintfW(buf, BUF_LEN, L"%ld", pPnt->y);
         SetWindowTextW(hwndSta2, buf);
-    
+
+        StringCbPrintfW(buf, BUF_LEN, L"%ld", wParam);
+        SetWindowTextW(MsgeAll, buf);
+
         break;
 
     case WM_RBUTTONUP:
@@ -402,4 +443,131 @@ void CreateLabels(HWND hWnd)
         WS_CHILD | WS_VISIBLE,
         40, 130, 55, 25,
         hWnd, (HMENU)4, NULL, NULL);
+
+    MsgeAll = CreateWindowW(L"static", L"150",
+        WS_CHILD | WS_VISIBLE,
+        240, 110, 55, 25,
+        hWnd, (HMENU)5, NULL, NULL);
+}
+
+
+void DrawPixels(HWND hWnd) {
+
+    PAINTSTRUCT ps;
+    RECT r;
+
+    GetClientRect(hWnd, &r);
+
+    if (r.bottom == 0) {
+
+        return;
+    }
+
+    HDC hdc = BeginPaint(hWnd, &ps);
+
+    for (int i = 0; i < 2; i++) {
+        //Sleep(5);
+        int x = rand() % r.right;
+        int y = rand() % r.bottom;
+        //SetPixel(hdc, x, y, RGB(rand() % 255, rand() % 255, rand() % 255));
+        SelectObject(hdc, GetStockObject(DC_BRUSH));
+        SetDCBrushColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
+        Ellipse(hdc, x, y, x+100, y+100);
+    }
+
+    EndPaint(hWnd, &ps);
+}
+void DrawLinesLocal(HWND hWnd, RECT* rect)
+{
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hWnd, &ps);
+    MoveToEx(hdc, 50, 50, NULL);
+    LineTo(hdc, 250, 50);
+
+    HPEN hWhitePen = GetStockObject(WHITE_PEN);
+    HPEN hOldPen = SelectObject(hdc, hWhitePen);
+
+    MoveToEx(hdc, 50, 100, NULL);
+    LineTo(hdc, 250, 100);
+
+    SelectObject(hdc, hOldPen);
+
+    SelectObject(hdc, GetStockObject(DC_BRUSH));
+    SetDCBrushColor(hdc, RGB(016, 128, 032));
+    SelectObject(hdc, GetStockObject(DC_PEN));
+    SetDCPenColor(hdc, RGB(255, 255, 255));
+
+     MoveRect(rect);
+
+    //Rectangle(hdc, rect->left, rect->top, rect->right, rect->bottom);
+
+  
+    SetDCBrushColor(hdc, RGB(225, 0, 225));
+    Ellipse(hdc, rect->left, rect->top, rect->right, rect->bottom);
+
+    char str[100];
+    sprintf_s(str, sizeof(str), "Sorry, Ilia...");
+    TextOutA(hdc, 200, 250, str, strlen(str) + 1);
+
+    Sleep(1);
+    EndPaint(hWnd, &ps);
+}
+
+void DoDrawing(HWND hwnd) {
+
+    LOGBRUSH brush;
+    COLORREF col = RGB(0, 0, 0);
+    DWORD pen_style = PS_SOLID | PS_JOIN_MITER | PS_GEOMETRIC;
+
+    brush.lbStyle = BS_SOLID;
+    brush.lbColor = col;
+    brush.lbHatch = 0;
+
+    PAINTSTRUCT ps;
+
+    HDC hdc = BeginPaint(hwnd, &ps);
+
+    HPEN hPen1 = ExtCreatePen(pen_style, 8, &brush, 0, NULL);
+    HPEN holdPen = SelectObject(hdc, hPen1);
+
+    POINT points[5] = { { 30, 230 }, { 130, 230 }, { 130, 300 },
+        { 30, 300 }, { 30, 230} };
+    Polygon(hdc, points, 5);
+    
+    pen_style = PS_SOLID | PS_GEOMETRIC | PS_JOIN_BEVEL;
+    HPEN hPen2 = ExtCreatePen(pen_style, 8, &brush, 0, NULL);
+
+    SelectObject(hdc, hPen2);
+    DeleteObject(hPen1);
+
+    POINT points2[5] = { { 160, 230 }, { 260, 230 }, { 260, 300 },
+        { 160, 300 }, {160, 230 } };
+    MoveToEx(hdc, 130, 30, NULL);
+    Polygon(hdc, points2, 5);
+
+    pen_style = PS_SOLID | PS_GEOMETRIC | PS_JOIN_ROUND;
+    HPEN hPen3 = ExtCreatePen(pen_style, 8, &brush, 0, NULL);
+
+    SelectObject(hdc, hPen3);
+    DeleteObject(hPen2);
+
+    POINT points3[5] = { { 290, 230 }, { 390, 230 }, { 390, 300 },
+        { 290, 300 }, {290, 230 } };
+    MoveToEx(hdc, 260, 30, NULL);
+    Polygon(hdc, points3, 5);
+
+    SelectObject(hdc, holdPen);
+    DeleteObject(hPen3);
+
+    EndPaint(hwnd, &ps);
+}       
+
+void MoveRect(RECT* rect)
+{
+    rect->left += 1;
+    rect->top += 3;
+    if (rect->left > 1210 || rect->left < 0) rect->left = 0;
+    if (rect->top > 500 || rect->top < 0) rect->top = 0;
+    rect->right = rect->left + 100;
+    rect->bottom = rect->top + 100;
 }
