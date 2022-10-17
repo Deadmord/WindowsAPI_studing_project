@@ -1,5 +1,3 @@
-//#pragma comment(lib, "Ws2_32.lib")
-
 #include "framework.h"
 #include <wchar.h>
 #include <strsafe.h>
@@ -24,22 +22,27 @@
 #define MIN_WIDTH_SIZE      800     // MIN window size
 #define MIN_HEIGTH_SIZE     600
 #define CELL_GAP            1       // Cell gap in pixels
+#define WM_PC_MOVE (WM_USER + 0)    // Messege to start handle computer move
+#define ID_TIMER_PCMOVE     555     // Timer for dalay of computer move
+#define ID_HOTKEY           1       //Hotkey Ctrl+C
 
-#define MENU_POSITION_X     10
+#define MENU_POSITION_X     10      //Positions of menu
 #define MENU_POSITION_Y     20
-
-#define BOARD_POSITION_X    200
+#define BOARD_POSITION_X    180
 #define BOARD_POSITION_Y    20
 
-#define WM_WHITE_MOVE (WM_USER + 0)
 
-#define ID_TIMER  1
 
-// Global Variables:
-HINSTANCE hInst;                                        // current instance
-WCHAR szTitle[MAX_LOADSTRING] = L"MyWindowTitle";       // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING] = L"MyWindow";      // the main window class name
+// ----------------Global Variables--------------------
+HINSTANCE hInst;                                                // current instance
+WCHAR szTitle[MAX_LOADSTRING] = L"Othelo game - masa project";  // The title bar text
+WCHAR szWindowClass[MAX_LOADSTRING] = L"MainWindow";      // the main window class name
 
+HWND hUpDownRow, hEditRow;                                    //UpDownControl
+HWND hUpDownCol, hEditCol;                                    //UpDownControl
+
+
+struct state_t** board = NULL;                                  //declare of board (as pointer to pointer to struct).
 static struct {
     int rowNumbr, colNumbr;            //Number of row and colomn
     int rowSel, colSel;                 /* Currently selected row and colomn, or -1 if none. */
@@ -48,13 +51,10 @@ static struct {
     int cellSize;                      /* Size of a grid cell, not including its border. */
 } grid;
 
-struct state_t** board = NULL; //declare of board (as pointer to pointer to struct).
-
-int order = 0;
 color_t player = 0;
 color_t computer = 0;
 color_t curentMove = 0;
-
+int order = 0;
 int mainMoveCounter = 0;
 int crossCount = 0;
 int score[2] = { 0 };
@@ -65,23 +65,14 @@ static HBRUSH highlight_brush;
 static HBRUSH white_brush;
 static HBRUSH black_brush;
 
-
-//Test variables
-#define ID_HOTKEY 1     //Hotkey Ctrl+C
-HWND hwndSta1;
-HWND hwndSta2;
-HWND MsgeAll;
-RECT        rectMove = { 0 };
-//END Test variables
-
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-LRESULT CALLBACK    PanelProc(HWND, UINT, WPARAM, LPARAM);
+//LRESULT CALLBACK    PanelProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-void                appendMenus(HWND); //----Menu---
-void                windowMenus(HWND hWnd, int x, int y);
+static void         appendMenus(HWND);                        //----Up Menu---
+static void         windowMenus(HWND hWnd, int x, int y);     //----Window menu(buttons)
 static void         resizeGridPosition(int win_width, int win_height);
 static void         drawGrid(HDC hdc);
 static void         drawString(HDC dc, const char* s, int len, int x, int y);
@@ -89,44 +80,32 @@ static void         drawCell(HDC hdc, int rowX, int colY);
 static void         drawSelectedColor(HDC hdc, int x, int y);
 static void         drawCounter(HDC hdc, int x, int y);
 static void         drawScore(HDC hdc, int x, int y);
-static void         InitWindowGame(HDC hdc);
+static void         InitWindowGame(HDC hdc);            //Empty!!!!
 static bool         gridHitCheck(int x, int y, int* row, int* col);
 static void         selectCell(HWND window, int row, int col);
 static void         invalidateCell(HWND window, int row, int col);
-static void         on_key_press(HWND hWnd, WPARAM wParam);
-static void         on_mouse_click(HWND hWnd);
+static void         onKeyPress(HWND hWnd, WPARAM wParam);
+static void         onMouseClick(HWND hWnd);
 static void         makeMove(HWND hWnd, int rowX, int colY);
+static void         CenterWindow(HWND);
 
 
-void                CenterWindow(HWND);
-void                RegisterRedPanelClass(void);
-void                RegisterBluePanelClass(void);
-void                CreateLabels(HWND);
-void                FlashWindowLocalFunc(HWND);
-void                MoveRect(RECT* rect); 
-
-void DrawPixels(HWND hWnd);
-void DrawLinesLocal(HWND hWnd);
-void DoDrawing(HWND hwnd);
-
-
-
+//************Hey, entry here!***************
 int APIENTRY WinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
 
-    UNREFERENCED_PARAMETER(hPrevInstance);  // ???
-    UNREFERENCED_PARAMETER(lpCmdLine);      // ???
+    UNREFERENCED_PARAMETER(hPrevInstance);  // Switch off warnings
+    UNREFERENCED_PARAMETER(lpCmdLine);      
 
-    // TODO: Place code here.
     // Initialize global strings
     //LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING); // Я закомментил, лучше разкоментить
     //LoadStringW(hInstance, IDC_WINDOWSAPISTUDINGPROJECT, szWindowClass, MAX_LOADSTRING);
 
     //Использовать инициализацию когда будет кнопка старт (если статус игры начать то вызвать инициализацию)
-    grid.rowNumbr = grid.colNumbr = 6; //preset size of board when game loaded.
+    grid.rowNumbr = grid.colNumbr = 12; //preset size of board when game loaded.
     resizeBoard(&board, grid.rowNumbr, grid.colNumbr); //prepare new gamebord: allocate mamory
 
     for (int i = 0; i < grid.rowNumbr; i++) {	//reset to NULL allocated memory
@@ -143,6 +122,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     white_brush = CreateSolidBrush(RGB(0xFF, 0xFF, 0xFF));
     black_brush = CreateSolidBrush(RGB(0, 0, 0));
 
+    srand(time(NULL));          //Random preset
+
     MyRegisterClass(hInstance);
     if (!InitInstance (hInstance, nCmdShow))        // Perform application initialization.
     {
@@ -151,8 +132,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSAPISTUDINGPROJECT));
     MSG msg;
-
-    srand(time(NULL));          //Random preset
 
     // Main message loop:
     while (GetMessage(&msg, NULL, 0, 0))
@@ -163,7 +142,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
     }
-
     
     DeleteObject(background_brush);
     DeleteObject(board_brush);
@@ -176,11 +154,8 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
 
 
 
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
+
+// Registers the window class.
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
@@ -203,16 +178,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
+// Saves instance handle and creates main window
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
@@ -231,40 +197,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
 //  PURPOSE: Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HDC hdc;
     PAINTSTRUCT ps;
-    int rowX, colY;
-
-    //Test var
-    HBRUSH hBrush, holdBrush; //Radio 3
-    HPEN hPen, holdPen;
-
-    wchar_t     buf[10];
-    size_t      BUF_LEN = sizeof(buf);
-    RECT        rect;
-    LPPOINT     pPnt;
-    pPnt = malloc(sizeof(*pPnt));
-
     HMENU       hMenu;  //A popup menu 
     POINT       point;
 
-    //SetWindowTextW(MsgeAll, message);
-    //End test var
-
-
-
+    LPNMUPDOWN lpnmud;  //UpDownControl
+    UINT code;          //UpDownControl
 
     switch (message)
     {
@@ -272,42 +214,73 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         appendMenus(hWnd); //Menu
         InitCommonControls();
         windowMenus(hWnd, MENU_POSITION_X , MENU_POSITION_Y);
-        //Game initialisation
+
+        //Game initialisation here !!!!!!!!!!!!!------------
 
         RegisterHotKey(hWnd, ID_HOTKEY, MOD_CONTROL, 0x43);
-        CreateLabels(hWnd);
-
-        //RegisterRedPanelClass();
-        //CreateWindowExW(0L, L"RedPanelClass", NULL,
-        //    WS_CHILD | WS_VISIBLE,
-        //    20, 20, 80, 80,
-        //    hWnd, (HMENU)1, NULL, NULL);
-
-        //RegisterBluePanelClass();
-        //CreateWindowExW(0L, L"BluePanelClass", NULL,
-        //    WS_CHILD | WS_VISIBLE,
-        //    120, 20, 80, 80,
-        //    hWnd, (HMENU)2, NULL, NULL);
-
         break;
 
     case WM_SIZE:           //If window size changed
         resizeGridPosition(LOWORD(lParam), HIWORD(lParam), BOARD_POSITION_X, BOARD_POSITION_Y);
-
         break;
 
-    case WM_GETMINMAXINFO:
-        /* Windows is asking about the size constraints. */
+    case WM_GETMINMAXINFO:              //Windows is asking about the size constraints
         ((MINMAXINFO*)lParam)->ptMinTrackSize.x = MIN_WIDTH_SIZE;
         ((MINMAXINFO*)lParam)->ptMinTrackSize.y = MIN_HEIGTH_SIZE;
-        return 0;
+        break;
+
+    case WM_MOUSEMOVE:
+    {   /* The mouse moved. */
+        int rowX, colY;
+        if (gridHitCheck(LOWORD(lParam), HIWORD(lParam), &rowX, &colY)) {
+            selectCell(hWnd, rowX, colY);
+        }
+        else {
+            selectCell(hWnd, -1, -1);
+        }
+    }
+        break;
+
+    case WM_LBUTTONDOWN:
+        SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
+        break;
 
     case WM_LBUTTONUP:
         /* Left mouse button up. */
-        on_mouse_click(hWnd);
+        onMouseClick(hWnd);
         break;
 
-    case WM_PAINT:
+    case WM_RBUTTONUP:
+
+        point.x = LOWORD(lParam);
+        point.y = HIWORD(lParam);
+
+        hMenu = CreatePopupMenu();
+        ClientToScreen(hWnd, &point);
+
+        AppendMenuW(hMenu, MF_STRING, IDM_START, L"&Start");
+        AppendMenuW(hMenu, MF_STRING, IDM_NEW_GAME, L"&New game");
+        AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hMenu, MF_STRING, IDM_ABOUT, L"&About");
+        AppendMenuW(hMenu, MF_STRING, IDM_FILE_QUIT, L"&Quit");
+
+        TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, point.x, point.y, 0, hWnd, NULL);
+        DestroyMenu(hMenu);
+        break;
+
+    case WM_KEYDOWN:
+        /* Keyboard key down. */
+        onKeyPress(hWnd, wParam);
+        break;
+
+    case WM_HOTKEY:
+        if ((wParam) == ID_HOTKEY)
+        {
+            CenterWindow(hWnd);
+        }
+        break;
+
+    case WM_PAINT:          //  WM_PAINT    - Paint the main window
         /* The window needs a re-paint. */
         EnableMenuItem(GetMenu(hWnd), IDM_START,
             TRUE ? MF_ENABLED : MF_GRAYED);
@@ -324,27 +297,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         drawGrid(hdc);
         EndPaint(hWnd, &ps);
 
-        //PAINTSTRUCT ps;
-        //HDC hdc = BeginPaint(hWnd, &ps);
-        //// TODO: Add any drawing code that uses hdc here...
-        //EndPaint(hWnd, &ps);
-
         //DrawPixels(hWnd);
-
-        //DrawLinesLocal(hWnd, &rectMove);
         //InvalidateRect(hWnd, NULL, FALSE);
-        //DoDrawing(hWnd);
-
-
-
         break;
 
-    case WM_COMMAND:
+    case WM_COMMAND:    //  WM_COMMAND  - process the application menu
         {
             if (HIWORD(wParam) == BN_CLICKED) {
 
-                switch (LOWORD(wParam)) {
-
+                switch (LOWORD(wParam)) 
+                {
                 case ID_BLACK:
                     order = 1;
                     //player = black;
@@ -366,6 +328,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             //int wmId = LOWORD(wParam);      // Parse the menu selections:
             switch (LOWORD(wParam))
             {
+
             case IDM_START:
             case IDM_NEW_GAME:
                 MessageBeep(MB_ICONINFORMATION);
@@ -382,101 +345,65 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         break;
+    case WM_NOTIFY:
 
-    case WM_MOVE:  //удалить?!
-    
-        GetWindowRect(hWnd, &rect);
-        GetCursorPos(pPnt);
+        code = ((LPNMHDR)lParam)->code;
 
-        //StringCbPrintfW(buf, BUF_LEN, L"%ld", rect.left);
-        //SetWindowTextW(hwndSta1, buf);
+        if (code == UDN_DELTAPOS) {
 
-        //StringCbPrintfW(buf, BUF_LEN, L"%ld", rect.top);
-        //SetWindowTextW(hwndSta2, buf);
-    
-        break;
+            lpnmud = (NMUPDOWN*)lParam;
 
-    case WM_MOUSEMOVE:
-        /* The mouse moved. */
-        if (gridHitCheck(LOWORD(lParam), HIWORD(lParam), &rowX, &colY)) {
-            selectCell(hWnd, rowX, colY);
-        }
-        else {
-            selectCell(hWnd, -1, -1);
+            int value = lpnmud->iPos + lpnmud->iDelta;
+
+            if (value < UD_MIN_POS) {
+                value = UD_MIN_POS;
+            }
+
+            if (value > UD_MAX_POS) {
+                value = UD_MAX_POS;
+            }
+            
+            if (lpnmud->hdr.idFrom == ID_UPDOWN_ROW)
+            {
+                grid.rowNumbr =  value;
+            }
+            else if (lpnmud->hdr.idFrom == ID_UPDOWN_COL)
+            {
+                grid.colNumbr = value;
+            }
+            
+
+
+
+            //const int asize = 4;
+            //wchar_t buf[4];
+            //size_t cbDest = asize * sizeof(wchar_t);
+            //StringCbPrintfW(buf, cbDest, L"%d", value);
+            //SetWindowTextW(hStatic, buf);
+            //InvalidateRect(hWnd, NULL, false);
         }
 
         break;
 
     case WM_TIMER:
         MessageBeep(0);
-        {   KillTimer(hWnd, ID_TIMER);
+        {   KillTimer(hWnd, ID_TIMER_PCMOVE);
             int rowSel, colSel;
             if (curentMove != 0 && curentMove == computer && mainMoveCounter > 2) {
                 movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
                 pcMove(board, grid.rowNumbr, grid.colNumbr, computer, &rowSel, &colSel);
-                SendMessage((HWND)hWnd, WM_WHITE_MOVE, rowSel, colSel);
+                SendMessage((HWND)hWnd, WM_PC_MOVE, rowSel, colSel);
             }
         }
         return 0;
 
-    case WM_LBUTTONDOWN:
-        SetTimer(hWnd, ID_TIMER, 2000, NULL);
-
-        //GetCursorPos(pPnt);
-        //ScreenToClient(hWnd, pPnt);
-
-        //StringCbPrintfW(buf, BUF_LEN, L"%ld", pPnt->x);
-        //SetWindowTextW(hwndSta1, buf);
-
-        //StringCbPrintfW(buf, BUF_LEN, L"%ld", pPnt->y);
-        //SetWindowTextW(hwndSta2, buf);
-
-        //StringCbPrintfW(buf, BUF_LEN, L"%ld", wParam);
-        //SetWindowTextW(MsgeAll, buf);
-
-        break;
-
-    case WM_RBUTTONUP:
-
-        point.x = LOWORD(lParam);
-        point.y = HIWORD(lParam);
-
-        hMenu = CreatePopupMenu();
-        ClientToScreen(hWnd, &point);
-
-        AppendMenuW(hMenu, MF_STRING, IDM_START, L"&Start");
-        AppendMenuW(hMenu, MF_STRING, IDM_NEW_GAME, L"&New game");
-        AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hMenu, MF_STRING, IDM_ABOUT, L"&About");
-        AppendMenuW(hMenu, MF_STRING, IDM_FILE_QUIT, L"&Quit");
-
-        TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, point.x, point.y, 0, hWnd, NULL);
-        DestroyMenu(hMenu);
-
-        break;
-
-    case WM_KEYDOWN:
-        /* Keyboard key down. */
-        on_key_press(hWnd, wParam);
-
-        break;
-
-    case WM_HOTKEY:
-        if ((wParam) == ID_HOTKEY)
-        {
-            CenterWindow(hWnd);
-        }
-
-        break;
-
-    case WM_WHITE_MOVE:
+    case WM_PC_MOVE:
         /* White computed a move. */
-        //waitFor(2);
         assert(curentMove == computer);
         makeMove(hWnd, wParam, lParam);
         break;
 
-    case WM_DESTROY:
+    case WM_DESTROY:        //  WM_DESTROY  - post a quit message and return
         UnregisterHotKey(hWnd, ID_HOTKEY);
         PostQuitMessage(0);
         break;
@@ -487,19 +414,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-LRESULT CALLBACK PanelProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
-{
-    switch (msg) {
-
-    case WM_LBUTTONUP:
-
-        MessageBeep(MB_OK);
-        MessageBoxW(NULL, L"First Program", L"First", MB_OK);
-        break;
-    }
-
-    return DefWindowProcW(hWnd, msg, wParam, lParam);
-}
+//LRESULT CALLBACK PanelProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) 
+//{
+//    switch (msg) {
+//
+//    case WM_LBUTTONUP:
+//
+//        MessageBeep(MB_OK);
+//        MessageBoxW(NULL, L"First Program", L"First", MB_OK);
+//        break;
+//    }
+//
+//    return DefWindowProcW(hWnd, msg, wParam, lParam);
+//}
 void appendMenus(HWND hWnd)     //Menu handler
 {
 
@@ -515,26 +442,67 @@ void appendMenus(HWND hWnd)     //Menu handler
     AppendMenuW(hMenu, MF_STRING, IDM_ABOUT, L"&About");
     AppendMenuW(hMenu, MF_STRING, IDM_FILE_QUIT, L"&Quit");
 
-    AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR)hMenu, L"&View");
+    AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR)hMenu, L"&Menu");
     SetMenu(hWnd, hMenubar);
 }
 
 void windowMenus(HWND hWnd, int x, int y) //Menu handler
 { 
     int buttonWidth = 75;
-    int buttonHeight = 30;
+    int buttonHeight = 25;
+
+    INITCOMMONCONTROLSEX icex;
+    icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    icex.dwICC = ICC_UPDOWN_CLASS;
+    InitCommonControlsEx(&icex);
+
+    //-----------Сhoose a demention------------
+    CreateWindowW(L"Button", L"Size of board (Row | Col)",
+        WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+        x, y, 180, 60, hWnd, (HMENU)0, hInst, NULL);
+
+    hUpDownRow = CreateWindowW(UPDOWN_CLASSW, NULL, WS_CHILD | WS_VISIBLE
+        | UDS_SETBUDDYINT | UDS_ALIGNRIGHT,
+        0, 0, 0, 0, hWnd, (HMENU)ID_UPDOWN_ROW, NULL, NULL);
+
+    hEditRow = CreateWindowExW(WS_EX_CLIENTEDGE, WC_EDITW, NULL, WS_CHILD
+        | WS_VISIBLE | ES_RIGHT, 25, y + 25, 40, 25, hWnd,
+        (HMENU)ID_EDIT_ROW, NULL, NULL);
+
+    SendMessageW(hUpDownRow, UDM_SETBUDDY, (WPARAM)hEditRow, 0);
+    SendMessageW(hUpDownRow, UDM_SETRANGE, 0, MAKELPARAM(UD_MAX_POS, UD_MIN_POS));
+    SendMessageW(hUpDownRow, UDM_SETPOS32, 0, 0);
+
+    hUpDownCol = CreateWindowW(UPDOWN_CLASSW, NULL, WS_CHILD | WS_VISIBLE
+        | UDS_SETBUDDYINT | UDS_ALIGNRIGHT,
+        0, 0, 0, 0, hWnd, (HMENU)ID_UPDOWN_COL, NULL, NULL);
+
+    hEditCol = CreateWindowExW(WS_EX_CLIENTEDGE, WC_EDITW, NULL, WS_CHILD
+        | WS_VISIBLE | ES_RIGHT, 115, y + 25, 40, 25, hWnd,
+        (HMENU)ID_EDIT_COL, NULL, NULL);
+
+    SendMessageW(hUpDownCol, UDM_SETBUDDY, (WPARAM)hEditCol, 0);
+    SendMessageW(hUpDownCol, UDM_SETRANGE, 0, MAKELPARAM(UD_MAX_POS, UD_MIN_POS));
+    SendMessageW(hUpDownCol, UDM_SETPOS32, 0, 0);
 
     //-----------Сhoose a color------------
     CreateWindowW(L"Button", L"Сhoose a color",
         WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
-        x, y, 180, 60, hWnd, (HMENU)0, hInst, NULL);
+        x, y+80, 180, 120, hWnd, (HMENU)0, hInst, NULL);
     CreateWindowW(L"Button", L"Black",
         WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON,
-        x+10, y+20, buttonWidth, buttonHeight, hWnd, (HMENU)ID_BLACK, hInst, NULL);
+        x + 10, y + 100, buttonWidth, buttonHeight, hWnd, (HMENU)ID_BLACK, hInst, NULL);
     CreateWindowW(L"Button", L"White",
         WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON,
-        x+20 + buttonWidth, y+20, buttonWidth, buttonHeight, hWnd, (HMENU)ID_WHITE, hInst, NULL);
+        x + 20 + buttonWidth, y + 100, buttonWidth, buttonHeight, hWnd, (HMENU)ID_WHITE, hInst, NULL);
+    //--------------Start/New--------------
+    CreateWindowW(L"Button", L"Start",
+        WS_VISIBLE | WS_CHILD,
+        x, y + 285, 80, 40, hWnd, (HMENU)ID_START, NULL, NULL);
 
+    CreateWindowW(L"Button", L"New game",
+        WS_VISIBLE | WS_CHILD,
+        x + 90, y + 285, 80, 40, hWnd, (HMENU)ID_NEW_GAME, NULL, NULL);
 }
 
 // Message handler for about box.
@@ -562,8 +530,8 @@ static void resizeGridPosition(int win_width, int win_height, int x, int y)
 {
     int widthCell, heigthCell;
 
-    win_width -= x; //Spase for menu
-    win_height -= y+100;
+    win_width -= x+100; //Spase for menu
+    win_height -= y+150;
 
     widthCell = (win_width - (grid.colNumbr - 1) * CELL_GAP) / grid.colNumbr;
     heigthCell = (win_height - (grid.rowNumbr - 1) * CELL_GAP) / grid.rowNumbr;
@@ -699,8 +667,8 @@ static void drawCell(HDC hdc, int rowX, int colY)
 
 static void drawSelectedColor(HDC hdc, int x, int y)
 {
- const int      shiftX = 130;
- const int      shiftY = 75;
+ const int      shiftX = 120;
+ const int      shiftY = 130;
  const int      cellSize = 50;
  char           status[128];
 
@@ -741,8 +709,8 @@ static void drawSelectedColor(HDC hdc, int x, int y)
 
 static void drawCounter(HDC hdc, int x, int y)
 {
-    const int      shiftX = 100;
-    const int      shiftY = 150;
+    const int      shiftX = 90;
+    const int      shiftY = 225;
     char           status[128];
 
     sprintf_s(status, sizeof(status), "Count of moves: %d", mainMoveCounter);
@@ -751,8 +719,8 @@ static void drawCounter(HDC hdc, int x, int y)
 
 static void drawScore(HDC hdc, int x, int y)
 {
-    const int      shiftX = 100;
-    const int      shiftY = 200;
+    const int      shiftX = 90;
+    const int      shiftY = 250;
     int blackScore, whiteScore;
     char           status[128];
 
@@ -822,7 +790,7 @@ static void invalidateCell(HWND hWnd, int row, int col)
     //InvalidateRect(hWnd, NULL, false);
 }
 
-static void on_key_press(HWND hWnd, WPARAM wParam)
+static void onKeyPress(HWND hWnd, WPARAM wParam)
 {
     int row, col;
 
@@ -834,7 +802,7 @@ static void on_key_press(HWND hWnd, WPARAM wParam)
         return;
     case VK_SPACE:
     case VK_RETURN:
-        on_mouse_click(hWnd);
+        onMouseClick(hWnd);
         return;
 
     case VK_ESCAPE:
@@ -858,7 +826,7 @@ static void on_key_press(HWND hWnd, WPARAM wParam)
     selectCell(hWnd, max(0, min(row, grid.rowNumbr)), max(0, min(col, grid.colNumbr)));
 }
 
-static void on_mouse_click(HWND hWnd)
+static void onMouseClick(HWND hWnd)
 {
     if (curentMove == gameOver) {
         InitWindowGame(hWnd);
@@ -915,26 +883,8 @@ static void makeMove(HWND hWnd, int rowX, int colY)
         movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
     }
 
-    //if (curentMove == computer) {
-    //    pcMove(board, grid.rowNumbr, grid.colNumbr, computer, &rowSel, &colSel);
-    //    SendMessage((HWND)hWnd, WM_WHITE_MOVE, rowSel, colSel);
-    //}
-
     InvalidateRect(hWnd, NULL, TRUE);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 void CenterWindow(HWND hWnd) 
 {
@@ -950,59 +900,6 @@ void CenterWindow(HWND hWnd)
     SetWindowPos(hWnd, HWND_TOP, (screen_w - win_w) / 2,
         (screen_h - win_h) / 2, 0, 0, SWP_NOSIZE);
 }
-
-void RegisterRedPanelClass(void) 
-{
-
-    HBRUSH hbrush = CreateSolidBrush(RGB(255, 0, 0));
-
-    WNDCLASSW rwc = { 0 };
-
-    rwc.lpszClassName = L"RedPanelClass";
-    rwc.hbrBackground = hbrush;
-    rwc.lpfnWndProc = PanelProc;
-    rwc.hCursor = LoadCursor(0, IDC_ARROW);
-    RegisterClassW(&rwc);
-}
-
-void RegisterBluePanelClass(void) 
-{
-
-    HBRUSH hbrush = CreateSolidBrush(RGB(0, 0, 255));
-
-    WNDCLASSW rwc = { 0 };
-
-    rwc.lpszClassName = L"BluePanelClass";
-    rwc.hbrBackground = hbrush;
-    rwc.lpfnWndProc = PanelProc;
-    rwc.hCursor = LoadCursor(0, IDC_ARROW);
-
-    RegisterClassW(&rwc);
-}
-
-void CreateLabels(HWND hWnd) 
-{
-    CreateWindowW(L"static", L"x: ",
-        WS_CHILD | WS_VISIBLE,
-        10, 400, 25, 25,
-        hWnd, (HMENU)1, NULL, NULL);
-
-    hwndSta1 = CreateWindowW(L"static", L"150",
-        WS_CHILD | WS_VISIBLE,
-        40, 400, 55, 25,
-        hWnd, (HMENU)2, NULL, NULL);
-
-    CreateWindowW(L"static", L"y: ",
-        WS_CHILD | WS_VISIBLE,
-        10, 420, 25, 25,
-        hWnd, (HMENU)3, NULL, NULL);
-
-    hwndSta2 = CreateWindowW(L"static", L"150",
-        WS_CHILD | WS_VISIBLE,
-        40, 420, 55, 25,
-        hWnd, (HMENU)4, NULL, NULL);
-}
-
 
 void DrawPixels(HWND hWnd) {
 
@@ -1029,100 +926,6 @@ void DrawPixels(HWND hWnd) {
     }
 
     EndPaint(hWnd, &ps);
-}
-void DrawLinesLocal(HWND hWnd, RECT* rect)
-{
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hWnd, &ps);
-    MoveToEx(hdc, 50, 50, NULL);
-    LineTo(hdc, 250, 50);
-
-    HPEN hWhitePen = GetStockObject(WHITE_PEN);
-    HPEN hOldPen = SelectObject(hdc, hWhitePen);
-
-    MoveToEx(hdc, 50, 100, NULL);
-    LineTo(hdc, 250, 100);
-
-    SelectObject(hdc, hOldPen);
-
-    SelectObject(hdc, GetStockObject(DC_BRUSH));
-    SetDCBrushColor(hdc, RGB(016, 128, 032));
-    SelectObject(hdc, GetStockObject(DC_PEN));
-    SetDCPenColor(hdc, RGB(255, 255, 255));
-
-     MoveRect(rect);
-
-    //Rectangle(hdc, rect->left, rect->top, rect->right, rect->bottom);
-
-  
-    SetDCBrushColor(hdc, RGB(225, 0, 225));
-    Ellipse(hdc, rect->left, rect->top, rect->right, rect->bottom);
-
-    char str[100];
-    sprintf_s(str, sizeof(str), "Sorry, Ilia...");
-    TextOutA(hdc, 200, 250, str, strlen(str) + 1);
-
-    Sleep(1);
-    EndPaint(hWnd, &ps);
-}
-
-void DoDrawing(HWND hwnd) {
-
-    LOGBRUSH brush;
-    COLORREF col = RGB(0, 0, 0);
-    DWORD pen_style = PS_SOLID | PS_JOIN_MITER | PS_GEOMETRIC;
-
-    brush.lbStyle = BS_SOLID;
-    brush.lbColor = col;
-    brush.lbHatch = 0;
-
-    PAINTSTRUCT ps;
-
-    HDC hdc = BeginPaint(hwnd, &ps);
-
-    HPEN hPen1 = ExtCreatePen(pen_style, 8, &brush, 0, NULL);
-    HPEN holdPen = SelectObject(hdc, hPen1);
-
-    POINT points[5] = { { 30, 230 }, { 130, 230 }, { 130, 300 },
-        { 30, 300 }, { 30, 230} };
-    Polygon(hdc, points, 5);
-    
-    pen_style = PS_SOLID | PS_GEOMETRIC | PS_JOIN_BEVEL;
-    HPEN hPen2 = ExtCreatePen(pen_style, 8, &brush, 0, NULL);
-
-    SelectObject(hdc, hPen2);
-    DeleteObject(hPen1);
-
-    POINT points2[5] = { { 160, 230 }, { 260, 230 }, { 260, 300 },
-        { 160, 300 }, {160, 230 } };
-    MoveToEx(hdc, 130, 30, NULL);
-    Polygon(hdc, points2, 5);
-
-    pen_style = PS_SOLID | PS_GEOMETRIC | PS_JOIN_ROUND;
-    HPEN hPen3 = ExtCreatePen(pen_style, 8, &brush, 0, NULL);
-
-    SelectObject(hdc, hPen3);
-    DeleteObject(hPen2);
-
-    POINT points3[5] = { { 290, 230 }, { 390, 230 }, { 390, 300 },
-        { 290, 300 }, {290, 230 } };
-    MoveToEx(hdc, 260, 30, NULL);
-    Polygon(hdc, points3, 5);
-
-    SelectObject(hdc, holdPen);
-    DeleteObject(hPen3);
-
-    EndPaint(hwnd, &ps);
-}       
-
-void MoveRect(RECT* rect)
-{
-    rect->left += 1;
-    rect->top += 3;
-    if (rect->left > 1210 || rect->left < 0) rect->left = 0;
-    if (rect->top > 500 || rect->top < 0) rect->top = 0;
-    rect->right = rect->left + 100;
-    rect->bottom = rect->top + 100;
 }
 
 //int x = GetSystemMetrics(SM_CXSCREEN);
