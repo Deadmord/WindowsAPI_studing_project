@@ -27,6 +27,11 @@ typedef enum mode {
 	execute
 } mode_t;
 
+typedef enum gameStatus {
+	stoped,
+	started
+} status_t;
+
 void mainCicleOfGame(); //00 Main cicle 
 void initStart(state_tdef*** board, int row, int col, int* mainMoveCounter, color_t* player, color_t* computer, color_t* curentMove, int order); //01 Initialisation start condition
 void resizeBoard(state_tdef*** board, int n, int m); //02 Create board requested size
@@ -38,7 +43,7 @@ void writeCell(state_tdef** board, int row, int col, int x, int y, color_t playe
 int movePossibilities(state_tdef** board, int row, int col, color_t curentMove); //07count of posible moves and fill array of posible cell
 int flipAround(state_tdef** board, int row, int col, int x, int y, color_t curentMove, mode_t mode); //08handling a fliping of opponent disks
 int Hint(state_tdef** board, int row, int col, color_t curentMove);	//09found of most pragmatic step
-void pcMove(state_tdef** board, int row, int col, color_t computer); //10simulation of computer move
+void pcMove(state_tdef** board, int row, int col, color_t computer, int* rowSel, int* colSel);	//10simulation of computer move
 void waitFor(unsigned int secs); //11dalay
 int CalñSore(state_tdef** board, int row, int col, color_t curentMove); //12Calculate the score for AI
 void mainScore(int* score, state_tdef** board, int row, int col, color_t player, color_t computer); //13Calculate the curent score

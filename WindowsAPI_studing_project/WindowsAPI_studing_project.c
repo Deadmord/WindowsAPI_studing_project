@@ -6,6 +6,7 @@
 #include <winuser.h>
 #include "WindowsAPI_studing_project.h"
 #include "Othello_res.h"
+#include "Resource.h"
 #include "Othello_Console.h"        //Function from previos verson Othello game
 
 //-------*********------------
@@ -27,9 +28,9 @@
 #define ID_HOTKEY           1       //Hotkey Ctrl+C
 
 #define MENU_POSITION_X     10      //Positions of menu
-#define MENU_POSITION_Y     20
-#define BOARD_POSITION_X    180
-#define BOARD_POSITION_Y    20
+#define MENU_POSITION_Y     40
+#define BOARD_POSITION_X    200
+#define BOARD_POSITION_Y    0
 
 
 
@@ -45,12 +46,13 @@ HWND hUpDownCol, hEditCol;                                    //UpDownControl
 struct state_t** board = NULL;                                  //declare of board (as pointer to pointer to struct).
 static struct {
     int rowNumbr, colNumbr;            //Number of row and colomn
+    int rowMenu, colMenu;            //Number of row and colomn
     int rowSel, colSel;                 /* Currently selected row and colomn, or -1 if none. */
     int x, y;                           /* Coordinates of the grid relative to window origin. */
     int widthSize, heigthSize;          /* Size of the grid. */
     int cellSize;                      /* Size of a grid cell, not including its border. */
 } grid;
-
+status_t gameStatus = stoped;
 color_t player = 0;
 color_t computer = 0;
 color_t curentMove = 0;
@@ -73,14 +75,14 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 static void         appendMenus(HWND);                        //----Up Menu---
 static void         windowMenus(HWND hWnd, int x, int y);     //----Window menu(buttons)
-static void         resizeGridPosition(int win_width, int win_height);
+static void         resizeGridPosition(int win_width, int win_height, int x, int y);
 static void         drawGrid(HDC hdc);
 static void         drawString(HDC dc, const char* s, int len, int x, int y);
 static void         drawCell(HDC hdc, int rowX, int colY);
 static void         drawSelectedColor(HDC hdc, int x, int y);
 static void         drawCounter(HDC hdc, int x, int y);
 static void         drawScore(HDC hdc, int x, int y);
-static void         InitWindowGame(HDC hdc);            //Empty!!!!
+static void         InitWindowGame(HWND hWnd);            //Empty!!!!
 static bool         gridHitCheck(int x, int y, int* row, int* col);
 static void         selectCell(HWND window, int row, int col);
 static void         invalidateCell(HWND window, int row, int col);
@@ -88,6 +90,7 @@ static void         onKeyPress(HWND hWnd, WPARAM wParam);
 static void         onMouseClick(HWND hWnd);
 static void         makeMove(HWND hWnd, int rowX, int colY);
 static void         CenterWindow(HWND);
+static void         DrawPixels(HWND hWnd, HDC hdc);
 
 
 //************Hey, entry here!***************
@@ -105,7 +108,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     //LoadStringW(hInstance, IDC_WINDOWSAPISTUDINGPROJECT, szWindowClass, MAX_LOADSTRING);
 
     //Использовать инициализацию когда будет кнопка старт (если статус игры начать то вызвать инициализацию)
-    grid.rowNumbr = grid.colNumbr = 12; //preset size of board when game loaded.
+    grid.rowNumbr = grid.colNumbr = 8; //preset size of board when game loaded.
     resizeBoard(&board, grid.rowNumbr, grid.colNumbr); //prepare new gamebord: allocate mamory
 
     for (int i = 0; i < grid.rowNumbr; i++) {	//reset to NULL allocated memory
@@ -122,7 +125,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     white_brush = CreateSolidBrush(RGB(0xFF, 0xFF, 0xFF));
     black_brush = CreateSolidBrush(RGB(0, 0, 0));
 
-    srand(time(NULL));          //Random preset
+    srand((int)time(NULL));          //Random preset
 
     MyRegisterClass(hInstance);
     if (!InitInstance (hInstance, nCmdShow))        // Perform application initialization.
@@ -171,7 +174,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
     wcex.hCursor        = LoadCursor(NULL, IDC_CROSS);
     //wcex.hbrBackground  = (HBRUSH)(COLOR_GRAYTEXT +1);
-    wcex.hbrBackground  = background_brush;
+    //wcex.hbrBackground  = background_brush;
+    wcex.hbrBackground = CreatePatternBrush((HBITMAP)LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(IDB_BITMAP1), IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR));
+
+    
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_WINDOWSAPISTUDINGPROJECT);
     wcex.lpszClassName  = szWindowClass;
     
@@ -242,7 +248,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_LBUTTONDOWN:
-        SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
+
         break;
 
     case WM_LBUTTONUP:
@@ -285,19 +291,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         EnableMenuItem(GetMenu(hWnd), IDM_START,
             TRUE ? MF_ENABLED : MF_GRAYED);
         EnableMenuItem(GetMenu(hWnd), IDM_NEW_GAME,
-            curentMove != computer ? MF_ENABLED : MF_GRAYED);
+            TRUE ? MF_ENABLED : MF_GRAYED);
 
         hdc = BeginPaint(hWnd, &ps);
-        SetBkMode(hdc, TRANSPARENT);
+        SetBkMode(hdc, TRANSPARENT); //make TRANSPARENT background
 
         drawSelectedColor(hdc, MENU_POSITION_X, MENU_POSITION_Y);
         drawCounter(hdc, MENU_POSITION_X, MENU_POSITION_Y);
         drawScore(hdc, MENU_POSITION_X, MENU_POSITION_Y);
 
         drawGrid(hdc);
+        if (curentMove == gameOver) DrawPixels(hWnd, hdc);
         EndPaint(hWnd, &ps);
 
-        //DrawPixels(hWnd);
+        //
         //InvalidateRect(hWnd, NULL, FALSE);
         break;
 
@@ -309,18 +316,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 {
                 case ID_BLACK:
                     order = 1;
-                    //player = black;
-                    //computer = white;
-                    initStart(&board, grid.rowNumbr, grid.colNumbr, &mainMoveCounter, &player, &computer, &curentMove, order);
+                    player = black;
+                    computer = white;
                     break;
                 case ID_WHITE:
                     order = 2;
-                    //player = white;
-                    //computer = black;
-                    initStart(&board, grid.rowNumbr, grid.colNumbr, &mainMoveCounter, &player, &computer, &curentMove, order);
+                    player = white;
+                    computer = black;
                     break;
                 }
-                movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
                 InvalidateRect(hWnd, NULL, TRUE);
                 SetFocus(hWnd);
             }
@@ -329,8 +333,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (LOWORD(wParam))
             {
 
-            case IDM_START:
+            case IDM_START: 
             case IDM_NEW_GAME:
+                InitWindowGame(hWnd);
                 MessageBeep(MB_ICONINFORMATION);
                 break;
             case IDM_ABOUT:
@@ -365,11 +370,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             
             if (lpnmud->hdr.idFrom == ID_UPDOWN_ROW)
             {
-                grid.rowNumbr =  value;
+                grid.rowMenu =  value;
             }
             else if (lpnmud->hdr.idFrom == ID_UPDOWN_COL)
             {
-                grid.colNumbr = value;
+                grid.colMenu = value;
             }
             
 
@@ -386,13 +391,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_TIMER:
-        MessageBeep(0);
+        //MessageBeep(0); for testing
         {   KillTimer(hWnd, ID_TIMER_PCMOVE);
             int rowSel, colSel;
             if (curentMove != 0 && curentMove == computer && mainMoveCounter > 2) {
-                movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
-                pcMove(board, grid.rowNumbr, grid.colNumbr, computer, &rowSel, &colSel);
-                SendMessage((HWND)hWnd, WM_PC_MOVE, rowSel, colSel);
+                if (movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove))
+                {
+                    pcMove(board, grid.rowNumbr, grid.colNumbr, computer, &rowSel, &colSel);
+                    SendMessage((HWND)hWnd, WM_PC_MOVE, rowSel, colSel);
+                }
+                else {
+                    crossCount++;
+                    curentMove = player;
+                }
+                if (crossCount >= 2) {
+                    curentMove = gameOver;
+                }
             }
         }
         return 0;
@@ -400,7 +414,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_PC_MOVE:
         /* White computed a move. */
         assert(curentMove == computer);
-        makeMove(hWnd, wParam, lParam);
+        makeMove(hWnd, (int)wParam, (int)lParam);
         break;
 
     case WM_DESTROY:        //  WM_DESTROY  - post a quit message and return
@@ -458,7 +472,7 @@ void windowMenus(HWND hWnd, int x, int y) //Menu handler
 
     //-----------Сhoose a demention------------
     CreateWindowW(L"Button", L"Size of board (Row | Col)",
-        WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+        WS_CHILD | WS_VISIBLE | BS_GROUPBOX | TRANSPARENT,
         x, y, 180, 60, hWnd, (HMENU)0, hInst, NULL);
 
     hUpDownRow = CreateWindowW(UPDOWN_CLASSW, NULL, WS_CHILD | WS_VISIBLE
@@ -498,11 +512,11 @@ void windowMenus(HWND hWnd, int x, int y) //Menu handler
     //--------------Start/New--------------
     CreateWindowW(L"Button", L"Start",
         WS_VISIBLE | WS_CHILD,
-        x, y + 285, 80, 40, hWnd, (HMENU)ID_START, NULL, NULL);
+        x, y + 285, 80, 40, hWnd, (HMENU)IDM_START, NULL, NULL);
 
     CreateWindowW(L"Button", L"New game",
         WS_VISIBLE | WS_CHILD,
-        x + 90, y + 285, 80, 40, hWnd, (HMENU)ID_NEW_GAME, NULL, NULL);
+        x + 90, y + 285, 80, 40, hWnd, (HMENU)IDM_NEW_GAME, NULL, NULL);
 }
 
 // Message handler for about box.
@@ -530,8 +544,11 @@ static void resizeGridPosition(int win_width, int win_height, int x, int y)
 {
     int widthCell, heigthCell;
 
-    win_width -= x+100; //Spase for menu
-    win_height -= y+150;
+    win_width -= x+50; //Spase for menu
+    win_height -= y+100;
+
+    int spaseForLableX = 50;
+    int spaseForLableY = 50;
 
     widthCell = (win_width - (grid.colNumbr - 1) * CELL_GAP) / grid.colNumbr;
     heigthCell = (win_height - (grid.rowNumbr - 1) * CELL_GAP) / grid.rowNumbr;
@@ -542,9 +559,10 @@ static void resizeGridPosition(int win_width, int win_height, int x, int y)
 
     //grid.x = win_width / 2 - grid.widthSize / 2 + grid.cellSize;
     //grid.y = win_height / 2 - grid.heigthSize / 2 + grid.cellSize;
-    grid.x = x + grid.cellSize;
-    grid.y = y + grid.cellSize / 2;
-
+    //grid.x = x + grid.cellSize;
+    //grid.y = y + grid.cellSize / 2;
+    grid.x = x + spaseForLableX;
+    grid.y = y + spaseForLableY;
 }
 
 /* Draw the grid and its contents. */
@@ -566,14 +584,14 @@ static void drawGrid(HDC hdc)
 
     /* Draw labels. */
     for (rowX = 0; rowX < grid.rowNumbr; rowX++) {
-        x = grid.x - grid.cellSize / 2;
+        x = grid.x - 25;
         y = grid.y + rowX * (grid.cellSize + CELL_GAP) + grid.cellSize / 2;
         sprintf_s(label, 3, "%d", (rowX+1));
         drawString(hdc, &label[0], 2, x, y);
     }
     for (colY = 0; colY < grid.colNumbr; colY++) {
         x = grid.x + colY * (grid.cellSize + CELL_GAP) + grid.cellSize / 2;
-        y = grid.y - grid.cellSize / 2;
+        y = grid.y - 25;
         label[0] = (colY + 'A');
         drawString(hdc, &label[0], 1, x, y);
     }
@@ -581,14 +599,14 @@ static void drawGrid(HDC hdc)
     /* Draw status text. */
     switch (curentMove) {
     case black:
-        sprintf_s(status, 16, "Blacks's move.");
+        sprintf_s(status, 16, "Blacks's turn.");
         break;
     case white:
-        sprintf_s(status, 16, "White's move.");
+        sprintf_s(status, 16, "White's turn.");
         break;
     case gameOver:
-        blackScore = 40; // mainScore(int* score, state_tdef * *board, int row, int col, color_t player, color_t computer);
-        whiteScore = 42; // mainScore(int* score, state_tdef * *board, int row, int col, color_t player, color_t computer);
+        blackScore = score[0];
+        whiteScore = score[1];
         if (blackScore > whiteScore) {
             sprintf_s(status, sizeof(status), "Black wins %d-%d!", blackScore, whiteScore);
         }
@@ -598,13 +616,14 @@ static void drawGrid(HDC hdc)
         else {
             sprintf_s(status, 16, "Draw!");
         }
+        break;
     default:
-        sprintf_s(status, sizeof(status), "Choose a demention of the board ->");
+        sprintf_s(status, sizeof(status), "Choose a dimension, color and press Start");
         break;
     }
 
-    drawString(hdc, status, strlen(status), grid.x + grid.widthSize / 2, 
-        grid.y + grid.heigthSize + grid.cellSize / 2);
+    drawString(hdc, status, (int)strlen(status), grid.x + grid.widthSize / 2, 
+        grid.y + grid.heigthSize + 25);
 
     /* Draw cells. */
     for (rowX = 0; rowX < grid.rowNumbr; rowX++) {
@@ -620,10 +639,10 @@ static void drawString(HDC hdc, const char* s, int len, int x, int y)
     SIZE size;
     int a[1024];
 
-    int n = MultiByteToWideChar(CP_UTF8, 0, s, -1, a, 1024);
+    int n = MultiByteToWideChar(CP_UTF8, 0, s, -1, (LPWSTR)a, 1024);
 
     GetTextExtentPoint32A(hdc, s, len, &size);
-    TextOut(hdc, x - size.cx / 2, y - size.cy / 2, a, len);
+    TextOut(hdc, x - size.cx / 2, y - size.cy / 2, (LPWSTR)a, len);
 }
 
 static void drawCell(HDC hdc, int rowX, int colY)
@@ -673,16 +692,16 @@ static void drawSelectedColor(HDC hdc, int x, int y)
  char           status[128];
 
  if (player == black) {
-     sprintf_s(status, sizeof(status), "You choose black");
+     sprintf_s(status, sizeof(status), "You chose black");
  }
  else if (player == white) {
-     sprintf_s(status, sizeof(status), "You choose white");
+     sprintf_s(status, sizeof(status), "You chose white");
  }
  else {
-     sprintf_s(status, 16, "Not choosen");
+     sprintf_s(status, 16, "Not chosen");
  }
 
- drawString(hdc, status, strlen(status), x + 60,
+ drawString(hdc, status, (int)strlen(status), x + 60,
      y + shiftY + 25);
 
 
@@ -714,7 +733,7 @@ static void drawCounter(HDC hdc, int x, int y)
     char           status[128];
 
     sprintf_s(status, sizeof(status), "Count of moves: %d", mainMoveCounter);
-    drawString(hdc, status, strlen(status), x + shiftX, y + shiftY);
+    drawString(hdc, status, (int)strlen(status), x + shiftX, y + shiftY);
 }
 
 static void drawScore(HDC hdc, int x, int y)
@@ -729,14 +748,46 @@ static void drawScore(HDC hdc, int x, int y)
     whiteScore = score[1];
 
     sprintf_s(status, sizeof(status), "Black - %d  |  %d - White", blackScore, whiteScore);
-    drawString(hdc, status, strlen(status), x + shiftX, y + shiftY);
+    drawString(hdc, status, (int)strlen(status), x + shiftX, y + shiftY);
 }
 
 
-void InitWindowGame(HDC hdc)                            //-------!!!!-------
+void InitWindowGame(HWND hWnd)                            //-------!!!!-------
 {
+    RECT rect;
+    GetClientRect(hWnd, &rect);
+    if (grid.rowMenu >= UD_MIN_POS && grid.colMenu >= UD_MIN_POS && grid.rowMenu <= UD_MAX_POS && grid.colMenu <= UD_MAX_POS)
+    {
+        grid.rowNumbr = grid.rowMenu;
+        grid.colNumbr = grid.colMenu; //preset size of board when game loaded.
+    }
+    else
+    {
+        grid.rowNumbr = grid.colNumbr = 8;
+    }
+    GetWindowRect(hWnd, &rect);
+    LONG width = rect.right - rect.left;
+    LONG height = rect.bottom - rect.top-60;
 
+    resizeGridPosition(width, height, BOARD_POSITION_X, BOARD_POSITION_Y);
+    initStart(&board, grid.rowNumbr, grid.colNumbr, &mainMoveCounter, &player, &computer, &curentMove, order);
 
+    movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
+    InvalidateRect(hWnd, NULL, TRUE);
+
+    ////Использовать инициализацию когда будет кнопка старт (если статус игры начать то вызвать инициализацию)
+    //resizeBoard(&board, grid.rowNumbr, grid.colNumbr); //prepare new gamebord: allocate mamory
+
+    //for (int i = 0; i < grid.rowNumbr; i++) {	//reset to NULL allocated memory
+    //    for (int j = 0; j < grid.rowNumbr; j++) {
+    //        board[i][j] = cellInst();
+    //    }
+    //}
+    //grid.rowSel = -1;
+    ////конец временной инициализации
+
+    gameStatus = started;
+    SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
 }
 
 /* Check whether the position is over an Othello cell. */
@@ -844,8 +895,10 @@ static void onMouseClick(HWND hWnd)
 /* Make a move for the current player and transition the game state. */
 static void makeMove(HWND hWnd, int rowX, int colY)
 {
-    int rowSel, colSel;
+    int numberMovePossible;
     assert(curentMove == player || curentMove == computer);
+
+    movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
 
     if (curentMove == player) {
         if (!(board[rowX][colY].possible == player)) {
@@ -854,39 +907,43 @@ static void makeMove(HWND hWnd, int rowX, int colY)
         }
 
         writeCell(board, grid.rowNumbr, grid.colNumbr, rowX, colY, curentMove);
-        crossCount = 0;
         mainMoveCounter++;
         curentMove = computer;
+        SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
     }
     else if (curentMove == computer) {
         writeCell(board, grid.rowNumbr, grid.colNumbr, rowX, colY, curentMove);
-        crossCount = 0;
         mainMoveCounter++;
         curentMove = player;
     }
 
-    movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
+    crossCount = 0;
+    numberMovePossible = movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
 
-    if (crossCount >= 2) {
-        curentMove = gameOver;
-    }
-    else if (curentMove == computer && !movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove)) 
+    if (curentMove == computer && !numberMovePossible)
     {
         crossCount++;
         curentMove = player;
-        movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
+        numberMovePossible = movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
     }
-    else if (curentMove == player && !movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove)) 
+    if (curentMove == player && !numberMovePossible)
     {
         crossCount++;
         curentMove = computer;
-        movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
+        numberMovePossible = movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
+        SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
     }
+    if (crossCount >= 2) {
+        curentMove = gameOver;
+    }
+    mainScore(score, board, grid.rowNumbr, grid.colNumbr, black, white);
+    if (mainMoveCounter>0 && (!score[0]||!score[1])) curentMove = gameOver;
+    if (mainMoveCounter >= (grid.rowNumbr * grid.colNumbr)) curentMove = gameOver;
 
     InvalidateRect(hWnd, NULL, TRUE);
 }
 
-void CenterWindow(HWND hWnd) 
+void CenterWindow(HWND hWnd)
 {
     RECT rc = { 0 };
 
@@ -901,31 +958,29 @@ void CenterWindow(HWND hWnd)
         (screen_h - win_h) / 2, 0, 0, SWP_NOSIZE);
 }
 
-void DrawPixels(HWND hWnd) {
+void DrawPixels(HWND hWnd, HDC hdc) {
 
-    PAINTSTRUCT ps;
+    //PAINTSTRUCT ps;
     RECT r;
-
     GetClientRect(hWnd, &r);
 
     if (r.bottom == 0) {
-
         return;
     }
 
-    HDC hdc = BeginPaint(hWnd, &ps);
-
-    for (int i = 0; i < 2; i++) {
-        //Sleep(5);
+    //HDC hdc = BeginPaint(hWnd, &ps);
+    Sleep(3000);
+    for (int i = 0; i < 250; i++) {
+        Sleep(5);
         int x = rand() % r.right;
         int y = rand() % r.bottom;
         //SetPixel(hdc, x, y, RGB(rand() % 255, rand() % 255, rand() % 255));
         SelectObject(hdc, GetStockObject(DC_BRUSH));
         SetDCBrushColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
-        Ellipse(hdc, x, y, x+100, y+100);
+        Ellipse(hdc, x, y, x+150, y+150);
     }
 
-    EndPaint(hWnd, &ps);
+    //EndPaint(hWnd, &ps);
 }
 
 //int x = GetSystemMetrics(SM_CXSCREEN);

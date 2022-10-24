@@ -1,16 +1,16 @@
-﻿#include <stdio.h>
-#include <stdlib.h> //Memory allocation
-#include <string.h>
-#include <time.h> //use in random and dalay
-#include <conio.h> //use in random
-#include <assert.h> //assert for debuging
+﻿#include <stdio.h>		//standard input/output
+#include <stdlib.h>		//Memory allocation
+#include <string.h>		//string
+#include <time.h>		//use in random and dalay
+#include <conio.h>		//use in random
+#include <assert.h>		//assert for debuging
 
-#include <locale.h> //for show which coding use
+#include <locale.h>		//for show which coding use
 
-#include <windows.h>
-#include <wchar.h>
+#include <windows.h>	//functions in the Windows API
+#include <wchar.h>		//for work with whide char
 
-#include "Othello_Console.h"
+#include "Othello_Console.h" //my lib
 
 /* TODO: Avoid global variables.
  * TODO: Try to avoid passing your structure (40 bytes + padding)
@@ -22,7 +22,7 @@ int main(void)
 {
 	while (1) {
 		mainCicleOfGame();
-		_getch();
+		_getch(); //validation before exit
 		exit(1);
 	}
     return 0;
@@ -67,10 +67,6 @@ void mainCicleOfGame() {
 	}
 	printf("%ls\n", L"s:\\яшертыHello°™");
 	*/
-	wchar_t ch = '⚫';
-	wprintf_s(L"%c", ch);
-	//wchar_t ch[] = '⚫⬤●•◦';
-	//printf_s("%c", ch);
 
 	printf("============================= Othello ============================\n");
 	printf("REVERSI\n");
