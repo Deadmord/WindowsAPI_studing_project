@@ -221,8 +221,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         InitCommonControls();
         windowMenus(hWnd, MENU_POSITION_X , MENU_POSITION_Y);
 
-        //Game initialisation here !!!!!!!!!!!!!------------
-
         RegisterHotKey(hWnd, ID_HOTKEY, MOD_CONTROL, 0x43);
         break;
 
@@ -301,7 +299,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         drawScore(hdc, MENU_POSITION_X, MENU_POSITION_Y);
 
         drawGrid(hdc);
-        if (curentMove == gameOver) DrawPixels(hWnd, hdc);
+        if (curentMove == gameOver) {
+            DrawPixels(hWnd, hdc);
+        }
         EndPaint(hWnd, &ps);
 
         //
@@ -787,7 +787,7 @@ void InitWindowGame(HWND hWnd)                            //-------!!!!-------
     ////конец временной инициализации
 
     gameStatus = started;
-    SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
+    SetTimer(hWnd, ID_TIMER_PCMOVE, 1000, NULL);
 }
 
 /* Check whether the position is over an Othello cell. */
@@ -909,7 +909,7 @@ static void makeMove(HWND hWnd, int rowX, int colY)
         writeCell(board, grid.rowNumbr, grid.colNumbr, rowX, colY, curentMove);
         mainMoveCounter++;
         curentMove = computer;
-        SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
+        SetTimer(hWnd, ID_TIMER_PCMOVE, 1000, NULL);
     }
     else if (curentMove == computer) {
         writeCell(board, grid.rowNumbr, grid.colNumbr, rowX, colY, curentMove);
@@ -931,7 +931,7 @@ static void makeMove(HWND hWnd, int rowX, int colY)
         crossCount++;
         curentMove = computer;
         numberMovePossible = movePossibilities(board, grid.rowNumbr, grid.colNumbr, curentMove);
-        SetTimer(hWnd, ID_TIMER_PCMOVE, 2000, NULL);
+        SetTimer(hWnd, ID_TIMER_PCMOVE, 1000, NULL);
     }
     if (crossCount >= 2) {
         curentMove = gameOver;
@@ -980,6 +980,7 @@ void DrawPixels(HWND hWnd, HDC hdc) {
         Ellipse(hdc, x, y, x+150, y+150);
     }
 
+    onMouseClick(hWnd);
     //EndPaint(hWnd, &ps);
 }
 
