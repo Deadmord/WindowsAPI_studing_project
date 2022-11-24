@@ -1,134 +1,22 @@
-#include "framework.h"
-#include <wchar.h>
-#include <strsafe.h>
-#include <commctrl.h>
-#include <time.h>
-#include <winuser.h>
-#include "WindowsAPI_studing_project.h"
-#include "Othello_res.h"
-#include "Resource.h"
+#include "Othello_WinAPI.h"
+#include "Initialize.h"
 #include "Othello_Console.h"        //Function from previos verson Othello game
-
-//-------*********------------
-#include <assert.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <process.h>
-
-//----------Windows sizes & initial position---------
-#define MAX_LOADSTRING      100
-#define INIT_WIDTH_SIZE     1024     // Initial window size
-#define INIT_HEIGTH_SIZE    768 
-#define MIN_WIDTH_SIZE      800     // MIN window size
-#define MIN_HEIGTH_SIZE     600
-#define CELL_GAP            1       // Cell gap in pixels
-#define WM_PC_MOVE (WM_USER + 0)    // Messege to start handle computer move
-#define ID_TIMER_PCMOVE     555     // Timer for dalay of computer move
-#define ID_HOTKEY           1       //Hotkey Ctrl+C
-
-#define MENU_POSITION_X     10      //Positions of menu
-#define MENU_POSITION_Y     40
-#define BOARD_POSITION_X    200
-#define BOARD_POSITION_Y    0
-
-
-
-// ----------------Global Variables--------------------
-HINSTANCE hInst;                                                // current instance
-WCHAR szTitle[MAX_LOADSTRING] = L"Othelo game - masa project";  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING] = L"MainWindow";      // the main window class name
-
-HWND hUpDownRow, hEditRow;                                    //UpDownControl
-HWND hUpDownCol, hEditCol;                                    //UpDownControl
-
-
-struct state_t** board = NULL;                                  //declare of board (as pointer to pointer to struct).
-static struct {
-    int rowNumbr, colNumbr;            //Number of row and colomn
-    int rowMenu, colMenu;            //Number of row and colomn
-    int rowSel, colSel;                 /* Currently selected row and colomn, or -1 if none. */
-    int x, y;                           /* Coordinates of the grid relative to window origin. */
-    int widthSize, heigthSize;          /* Size of the grid. */
-    int cellSize;                      /* Size of a grid cell, not including its border. */
-} grid;
-status_t gameStatus = stoped;
-color_t player = 0;
-color_t computer = 0;
-color_t curentMove = 0;
-int order = 0;
-int mainMoveCounter = 0;
-int crossCount = 0;
-int score[2] = { 0 };
-
-static HBRUSH background_brush;                         //Global brush defenition;
-static HBRUSH board_brush; 
-static HBRUSH highlight_brush;
-static HBRUSH white_brush;
-static HBRUSH black_brush;
-
-// Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-//LRESULT CALLBACK    PanelProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-static void         appendMenus(HWND);                        //----Up Menu---
-static void         windowMenus(HWND hWnd, int x, int y);     //----Window menu(buttons)
-static void         resizeGridPosition(int win_width, int win_height, int x, int y);
-static void         drawGrid(HDC hdc);
-static void         drawString(HDC dc, const char* s, int len, int x, int y);
-static void         drawCell(HDC hdc, int rowX, int colY);
-static void         drawSelectedColor(HDC hdc, int x, int y);
-static void         drawCounter(HDC hdc, int x, int y);
-static void         drawScore(HDC hdc, int x, int y);
-static void         InitWindowGame(HWND hWnd);            //Empty!!!!
-static bool         gridHitCheck(int x, int y, int* row, int* col);
-static void         selectCell(HWND window, int row, int col);
-static void         invalidateCell(HWND window, int row, int col);
-static void         onKeyPress(HWND hWnd, WPARAM wParam);
-static void         onMouseClick(HWND hWnd);
-static void         makeMove(HWND hWnd, int rowX, int colY);
-static void         CenterWindow(HWND);
-static void         DrawPixels(HWND hWnd, HDC hdc);
-
 
 //************Hey, entry here!***************
 int APIENTRY WinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
+                     _In_ LPSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
-
-    UNREFERENCED_PARAMETER(hPrevInstance);  // Switch off warnings
+    UNREFERENCED_PARAMETER(hPrevInstance);      // Switch off warnings
     UNREFERENCED_PARAMETER(lpCmdLine);      
 
-    // Initialize global strings
-    //LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING); // Я закомментил, лучше разкоментить
-    //LoadStringW(hInstance, IDC_WINDOWSAPISTUDINGPROJECT, szWindowClass, MAX_LOADSTRING);
-
-    //Использовать инициализацию когда будет кнопка старт (если статус игры начать то вызвать инициализацию)
-    grid.rowNumbr = grid.colNumbr = 8; //preset size of board when game loaded.
-    resizeBoard(&board, grid.rowNumbr, grid.colNumbr); //prepare new gamebord: allocate mamory
-
-    for (int i = 0; i < grid.rowNumbr; i++) {	//reset to NULL allocated memory
-        for (int j = 0; j < grid.rowNumbr; j++) {
-            board[i][j] = cellInst();
-        }
-    }
-    grid.rowSel = -1;
-    //конец временной инициализации
-
-    background_brush = CreateSolidBrush(GetSysColor(COLOR_BTNFACE)); //Global brush initialisation
-    board_brush = CreateSolidBrush(RGB(0x00, 0x80, 0x00));
-    highlight_brush = CreateSolidBrush(RGB(0x00, 0xAA, 0x00));
-    white_brush = CreateSolidBrush(RGB(0xFF, 0xFF, 0xFF));
-    black_brush = CreateSolidBrush(RGB(0, 0, 0));
-
-    srand((int)time(NULL));          //Random preset
+    InitializeGlobalVar();
+    InitEmptyBoard();
+    InitializePaintTools();
 
     MyRegisterClass(hInstance);
-    if (!InitInstance (hInstance, nCmdShow))        // Perform application initialization.
+    if (!InitInstance (hInstance, nCmdShow))    // Perform application initialization.
     {
         return FALSE;
     }
@@ -136,8 +24,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSAPISTUDINGPROJECT));
     MSG msg;
 
-    // Main message loop:
-    while (GetMessage(&msg, NULL, 0, 0))
+    while (GetMessage(&msg, NULL, 0, 0))        // Main message loop:
     {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
@@ -145,17 +32,10 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
     }
-    
-    DeleteObject(background_brush);
-    DeleteObject(board_brush);
-    DeleteObject(highlight_brush);
-    DeleteObject(white_brush);
-    DeleteObject(black_brush);
+    DeactivatePaintTools();
 
     return (int) msg.wParam;
 }
-
-
 
 
 // Registers the window class.
@@ -183,6 +63,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     
     return RegisterClassExW(&wcex);
 }
+
 
 // Saves instance handle and creates main window
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
@@ -485,7 +366,7 @@ void windowMenus(HWND hWnd, int x, int y) //Menu handler
 
     SendMessageW(hUpDownRow, UDM_SETBUDDY, (WPARAM)hEditRow, 0);
     SendMessageW(hUpDownRow, UDM_SETRANGE, 0, MAKELPARAM(UD_MAX_POS, UD_MIN_POS));
-    SendMessageW(hUpDownRow, UDM_SETPOS32, 0, 0);
+    SendMessageW(hUpDownRow, UDM_SETPOS32, 0, UD_SET_POS);
 
     hUpDownCol = CreateWindowW(UPDOWN_CLASSW, NULL, WS_CHILD | WS_VISIBLE
         | UDS_SETBUDDYINT | UDS_ALIGNRIGHT,
@@ -497,7 +378,7 @@ void windowMenus(HWND hWnd, int x, int y) //Menu handler
 
     SendMessageW(hUpDownCol, UDM_SETBUDDY, (WPARAM)hEditCol, 0);
     SendMessageW(hUpDownCol, UDM_SETRANGE, 0, MAKELPARAM(UD_MAX_POS, UD_MIN_POS));
-    SendMessageW(hUpDownCol, UDM_SETPOS32, 0, 0);
+    SendMessageW(hUpDownCol, UDM_SETPOS32, 0, UD_SET_POS);
 
     //-----------Сhoose a color------------
     CreateWindowW(L"Button", L"Сhoose a color",
@@ -668,17 +549,24 @@ static void drawCell(HDC hdc, int rowX, int colY)
 
     if (diskStatus != empty) {
         /* Draw the disk. */
-        SelectObject(hdc, GetStockObject(DC_PEN));
-        SelectObject(hdc, diskStatus == black ? black_brush : white_brush);
-        SelectObject(hdc, diskStatus == black ? SetDCPenColor(hdc, RGB(200, 200, 200)) : SetDCPenColor(hdc, RGB(064, 064, 064)));
+        SelectObject(hdc, diskStatus == black ? black_brush : white_brush);     //select a brash
+        SelectObject(hdc, GetStockObject(DC_PEN));                              //1st approach: get dc_pen
+        //SetDCPenColor(hdc, diskStatus == black ? SOFT_WHITE : SOFT_BLACK);    //1st approach: change collor of dc_pen
+        SelectObject(hdc, diskStatus == black ? white_pen : black_pen);         //2nd approach: select a pen
+
+        //SelectObject(hdc, GetStockObject(DC_BRUSH));                          //benchmark
+        //SetDCBrushColor(hdc, RGB(64, 128, 248));
+        //SelectObject(hdc, GetStockObject(DC_PEN));
+        //SetDCPenColor(hdc, RGB(255, 128, 032));
 
         Ellipse(hdc, (x + 2), (y + 2), (x + grid.cellSize - 2), (y + grid.cellSize - 2));
     }
     if (possible != empty) {
         /* Draw the disk. */
-        SelectObject(hdc, GetStockObject(DC_PEN));
         SelectObject(hdc, GetStockObject(NULL_BRUSH));
-        SelectObject(hdc, possible == for_black ? SetDCPenColor(hdc, RGB(032, 032, 032)) : SetDCPenColor(hdc, RGB(200, 200, 200)));
+        SelectObject(hdc, GetStockObject(DC_PEN));                               //1st approach: get dc_pen
+        //SetDCPenColor(hdc, possible == for_black ? SOFT_BLACK : SOFT_WHITE);   //1st approach: change collor of dc_pen
+        SelectObject(hdc, possible == for_black ? black_pen : white_pen);        //2nd approach: select a pen
 
         Ellipse(hdc, (x + 2), (y + 2), (x + grid.cellSize - 2), (y + grid.cellSize - 2));
     }
@@ -715,12 +603,7 @@ static void drawSelectedColor(HDC hdc, int x, int y)
         /* Draw the disk. */
         SelectObject(hdc, GetStockObject(DC_PEN));
         SelectObject(hdc, player == black ? black_brush : white_brush);
-        SelectObject(hdc, player == black ? SetDCPenColor(hdc, RGB(200, 200, 200)) : SetDCPenColor(hdc, RGB(064, 064, 064)));
-
-        //SelectObject(hdc, GetStockObject(DC_BRUSH));      //benchmark
-        //SetDCBrushColor(hdc, RGB(64, 128, 248));
-        //SelectObject(hdc, GetStockObject(DC_PEN));
-        //SetDCPenColor(hdc, RGB(255, 128, 032));
+        SelectObject(hdc, player == black ? white_pen : black_pen);
 
         Ellipse(hdc, (x + shiftX + 2), (y + shiftY + 2), (x + shiftX + cellSize - 2), (y + shiftY + cellSize - 2));
     }
@@ -751,6 +634,20 @@ static void drawScore(HDC hdc, int x, int y)
     drawString(hdc, status, (int)strlen(status), x + shiftX, y + shiftY);
 }
 
+void InitEmptyBoard()
+{
+    gameStatus = stoped;
+    curentMove = empty;
+
+    resizeBoard(&board, grid.rowNumbr, grid.colNumbr); //prepare new gamebord: allocate mamory
+
+    for (int i = 0; i < grid.rowNumbr; i++) {	//reset to NULL allocated memory
+        for (int j = 0; j < grid.rowNumbr; j++) {
+            board[i][j] = cellInst();
+        }
+    }
+    grid.rowSel = -1;
+}
 
 void InitWindowGame(HWND hWnd)                            //-------!!!!-------
 {
@@ -886,7 +783,7 @@ static void onMouseClick(HWND hWnd)
         return;
     }
 
-    if (curentMove == player && grid.rowSel >= 0) 
+    if (gameStatus == started && curentMove == player && grid.rowSel >= 0) 
     {
         makeMove(hWnd, grid.rowSel, grid.colSel);
     }
@@ -977,10 +874,11 @@ void DrawPixels(HWND hWnd, HDC hdc) {
         //SetPixel(hdc, x, y, RGB(rand() % 255, rand() % 255, rand() % 255));
         SelectObject(hdc, GetStockObject(DC_BRUSH));
         SetDCBrushColor(hdc, RGB(rand() % 255, rand() % 255, rand() % 255));
-        Ellipse(hdc, x, y, x+150, y+150);
+        Ellipse(hdc, x, y, x+i, y+i);
     }
 
-    onMouseClick(hWnd);
+    InitEmptyBoard(hWnd);
+    InvalidateRect(hWnd, NULL, TRUE);
     //EndPaint(hWnd, &ps);
 }
 

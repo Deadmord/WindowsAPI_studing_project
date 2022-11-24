@@ -266,7 +266,6 @@ struct state_t cellInst(void)
 	struct state_t thisdata;
 	thisdata.color = empty;
 	thisdata.possible = none;
-	thisdata.last_move = 0;
 
 	//thisdata.color = rand()%3;
 	//printf("%d \n", thisdata.color);
