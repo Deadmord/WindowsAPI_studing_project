@@ -1,3 +1,4 @@
+//----------Elements IDs---------
 #define IDI_ICON        1
 #define IDM_MENU        2
 
@@ -15,5 +16,4 @@
 #define ID_EDIT_ROW		202
 #define ID_UPDOWN_COL	203			//UpDownControl
 #define ID_EDIT_COL		204
-#define UD_MAX_POS		20
-#define UD_MIN_POS		4
+

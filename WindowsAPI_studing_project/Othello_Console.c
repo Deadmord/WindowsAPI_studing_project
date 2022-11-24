@@ -266,7 +266,6 @@ struct state_t cellInst(void)
 	struct state_t thisdata;
 	thisdata.color = empty;
 	thisdata.possible = none;
-	thisdata.last_move = 0;
 
 	//thisdata.color = rand()%3;
 	//printf("%d \n", thisdata.color);
@@ -518,40 +517,39 @@ void pcMove(state_tdef** board, int row, int col, color_t computer, int* rowSel,
 		exit(3);
 	}
 
-
 	for (rowX = 0; rowX < row; rowX++)
 	{
 		for (colY = 0; colY < col; colY++)
 		{
-			if (board[rowX][colY].possible == none) // для всех возможных ходов 
+			if (board[rowX][colY].possible == none) // check all possible moves
 			{
 				continue;
 			}
-			for (int i = 0; i < row; i++) //копируем текущее состояние доски
+			for (int i = 0; i < row; i++) //make a copy of our curent board
 			{
 				for (int j = 0; j < col; j++)
 				{
-					boardTry[i][j] = board[i][j];// тут копируем
+					boardTry[i][j] = board[i][j];// each sell
 				}
 			}
-			writeCell(boardTry, row, col, rowX, colY, computer); //Делаем ход из возможных в тестовой доске
-			movePossibilities(boardTry, row, col, opponent);	//получаем таблицу ходов которые стали доступны для игрока
-			score = Hint(boardTry, row, col, opponent);			//Хинт, нужно разобрать как работает.
-			if ((rowX == 0 && colY == 0) || (rowX == 0 && colY == (col - 1) || rowX == (row - 1) && colY == 0 || rowX == (row - 1) && colY == (col - 1))) //проверяем, занимаем ли мы угол.
+			writeCell(boardTry, row, col, rowX, colY, computer); //Make possible move at copy board
+			movePossibilities(boardTry, row, col, opponent);	//create opponents, posible move
+			score = Hint(boardTry, row, col, opponent);			//Callculate MAX score for best opponent move !!!
+			if ((rowX == 0 && colY == 0) || (rowX == 0 && colY == (col - 1) || rowX == (row - 1) && colY == 0 || rowX == (row - 1) && colY == (col - 1))) //angle checking
 			{
-				minscore = score; //сохраняем результат,координаты хода и выходим
+				minscore = score; //save score and coordinats
 				rowXtry = rowX;
 				colYtry = colY;
 			}
-			else if (row == 0 || row == MAXSIZE - 1 || col == 0 || col == MAXSIZE - 1) //проверяем, занимаем ли мы край поля.
+			else if (rowX == 0 || rowX == row - 1 || colY == 0 || colY == col - 1) //boarder check
 			{
-				minscore = score; //сохраняем результат,координаты хода и выходим
+				minscore = score; //save score and coordinats
 				rowXtry = rowX;
 				colYtry = colY;
 			}
-			else if (score < minscore) // иначе проверяем меньше ли мы получили очков
+			else if (score < minscore) // or jast compare, and found min posible score for opponent
 			{
-				minscore = score; //сохраняем результат,координаты хода и выходим
+				minscore = score; //save score and coordinats
 				rowXtry = rowX;
 				colYtry = colY;
 			}
