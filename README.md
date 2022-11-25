@@ -14,7 +14,7 @@ Video:
 https://youtu.be/LPPWa-vr8nY
 
 Curent version 1.0.0.
-Ñhanges: 
+Changes: 
 	1. Renamed modules, functions and variables to meaningful name and according to next convention:
 		Modules		- Pascale_Snake_Case
 		function	- PascaleCase
