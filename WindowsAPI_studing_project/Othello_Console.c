@@ -1,4 +1,5 @@
 ﻿#include <stdio.h>		//standard input/output
+#include <math.h>
 #include <stdlib.h>		//Memory allocation
 #include <string.h>		//string
 #include <time.h>		//use in random and dalay
@@ -11,6 +12,7 @@
 #include <wchar.h>		//for work with whide char
 
 #include "Othello_Console.h" //my lib
+
 
 /* TODO: Avoid global variables.
  * TODO: Try to avoid passing your structure (40 bytes + padding)
@@ -498,10 +500,10 @@ int Hint(state_tdef** board, int row, int col, color_t curentMove)//Prompt the b
 
 void pcMove(state_tdef** board, int row, int col, color_t computer, int* rowSel, int* colSel)
 {
-	int rowX, colY, rowXtry, colYtry;	//координаты
-	int score = 0, minscore = 100;		//счетчики результата
+	int rowX, colY, rowXtry, colYtry;	//coordinats
+	int score = 0, minscore = row*col;	//counters
 
-	struct state_t** boardTry = NULL;	//объявление дополнительной доски, не забыть освободить память
+	struct state_t** boardTry = NULL;	//temp board defenition, dont forger free mamory!
 	resizeBoard(&boardTry, row, col);
 
 	color_t opponent = empty;
@@ -535,15 +537,19 @@ void pcMove(state_tdef** board, int row, int col, color_t computer, int* rowSel,
 			writeCell(boardTry, row, col, rowX, colY, computer); //Make possible move at copy board
 			movePossibilities(boardTry, row, col, opponent);	//create opponents, posible move
 			score = Hint(boardTry, row, col, opponent);			//Callculate MAX score for best opponent move !!!
-			if ((rowX == 0 && colY == 0) || (rowX == 0 && colY == (col - 1) || rowX == (row - 1) && colY == 0 || rowX == (row - 1) && colY == (col - 1))) //angle checking
+			if ((rowX == 0 && colY == 0) || (rowX == 0 && colY == (col - 1) || rowX == (row - 1) && colY == 0 || rowX == (row - 1) && colY == (col - 1))) //angle check
 			{
 				minscore = score; //save score and coordinats
 				rowXtry = rowX;
 				colYtry = colY;
+
+				rowX = row; //end loop condition, because it best turn for us
+				colY = col;
+				break;
 			}
-			else if (rowX == 0 || rowX == row - 1 || colY == 0 || colY == col - 1) //boarder check
+			else if (rowX == 0 || rowX == row - 1 || colY == 0 || colY == col - 1) //border check
 			{
-				minscore = score; //save score and coordinats
+				minscore = score/2; //every turn on the border will be better than any score
 				rowXtry = rowX;
 				colYtry = colY;
 			}

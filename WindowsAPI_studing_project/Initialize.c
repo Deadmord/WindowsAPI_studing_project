@@ -1,5 +1,5 @@
 #include <string.h>
-
+#include <time.h>                   ////use in random and dalay
 #include "Initialize.h"
 #include "Othello_const.h"
 
@@ -20,6 +20,18 @@ void InitializeGlobalVar()
     srand((int)time(NULL));          //Random preset
 }
 
+void InitializePaintTools()
+{
+    background_brush = CreateSolidBrush(GetSysColor(COLOR_BTNFACE)); //Global brush initialisation
+    board_brush = CreateSolidBrush(BOARD_COLOR);
+    highlight_brush = CreateSolidBrush(HIGHLIGHT_COLOR);
+
+    white_brush = CreateSolidBrush(WHITE);
+    black_brush = CreateSolidBrush(BLACK);
+    white_pen = CreatePen(PS_SOLID, 1, SOFT_WHITE);
+    black_pen = CreatePen(PS_SOLID, 1, SOFT_BLACK);
+}
+
 void DeactivatePaintTools()
 {
     DeleteObject(background_brush);
@@ -31,14 +43,17 @@ void DeactivatePaintTools()
     DeleteObject(black_pen);
 }
 
-void InitializePaintTools()
+void InitEmptyBoard()
 {
-    background_brush = CreateSolidBrush(GetSysColor(COLOR_BTNFACE)); //Global brush initialisation
-    board_brush = CreateSolidBrush(BOARD_COLOR);
-    highlight_brush = CreateSolidBrush(HIGHLIGHT_COLOR);
+    gameStatus = stoped;
+    curentMove = empty;
 
-    white_brush = CreateSolidBrush(WHITE);
-    black_brush = CreateSolidBrush(BLACK);
-    white_pen = CreatePen(PS_SOLID, 1, SOFT_WHITE);
-    black_pen = CreatePen(PS_SOLID, 1, SOFT_BLACK);
+    resizeBoard(&board, grid.rowNumbr, grid.colNumbr); //prepare new gamebord: allocate mamory
+
+    for (int i = 0; i < grid.rowNumbr; i++) {	//reset to NULL allocated memory
+        for (int j = 0; j < grid.rowNumbr; j++) {
+            board[i][j] = cellInst();
+        }
+    }
+    grid.rowSel = -1;
 }
