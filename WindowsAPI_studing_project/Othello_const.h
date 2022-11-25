@@ -2,8 +2,8 @@
 #define MAX_LOADSTRING      100
 #define INIT_WIDTH_SIZE     1024     // Initial window size
 #define INIT_HEIGTH_SIZE    768 
-#define MIN_WIDTH_SIZE      800     // MIN window size
-#define MIN_HEIGTH_SIZE     600
+#define MIN_WIDTH_SIZE      600     // MIN window size
+#define MIN_HEIGTH_SIZE     480
 #define CELL_GAP            1       // Cell gap in pixels
 #define WM_PC_MOVE (WM_USER + 0)    // Messege to start handle computer move
 #define ID_TIMER_PCMOVE     555     // Timer for dalay of computer move

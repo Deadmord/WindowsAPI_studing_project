@@ -1,8 +1,9 @@
 #pragma once
-#include <stdbool.h> //bool defenition
+#include <stdbool.h>		//bool defenition
+#include "Othello_const.h"  //Constans defenition
 
-#define MAXSIZE 42// Set the maximum size of the board
-#define MINSIZE 4// Set the minimum size of the board
+#define MAXSIZE UD_MAX_POS			// Set the maximum size of the board
+#define MINSIZE UD_MIN_POS			// Set the minimum size of the board
 
 //typedef enum { false, true } bool;
 typedef enum color {
